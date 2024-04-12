@@ -1,8 +1,6 @@
 /target
 DS_Store
-/.idea
-/.idea/*
-/.vscode
-/.vscode/*
+.idea/
+.vscode/
 *.code-workspace
 Cargo.lock
