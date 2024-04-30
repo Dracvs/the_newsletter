@@ -1,0 +1,175 @@
+# The name of the WorkFlow. Github displays the names of your workflows on the repository tab
+name: Rust
+
+# Automagically trigger the workflow
+
+on: 
+  # These settings allows us to run this specidfic CI pipeline for PRs Against
+  # this especific branch
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - dev
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_VERSION: 0.7.4
+  SQLX_FEATURES: "rustls,postgres"
+
+
+# A workflow run is made up of one or more jobs, which run in parallel by default
+# Each job runs in a runner environment specified by runs-on
+
+jobs:
+  #unique identifier of our job (`job_id`)
+  test:
+    # Sets the name `Test` for the Job, which is displayed in teh Github UI
+    name: Test
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    # Services containers to run with the `test`container job
+    services:
+      # Label used to acces the service container
+      postgres:
+        # Docker hub Image
+        image: postgres:16
+        # Environment variables scoped only for the `postgres` element
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        # When you map ports using the ports keyword, Github uses the --publish command to publish the containers ports to
+        # Docker Host. Opens tcp port 5432 on the host and service container
+        ports:
+          - 5432:5432
+    steps: 
+      #Downloads a copy of the code in your repository before running CI tests
+      - name: Check out repository code
+        # the uses keyword specificies that this step will run v3 of the actions/checkout actions.
+        #this is an action that checks out your repository onto the runner, allowing to run scripts or other actions against your code (such as build and test)
+        # You should use the checkout action any time your workflow will run against the repository's code.
+        uses: actions/checkout@v4
+
+      # this github action installs a rust toolchain using rustup. It is designed for one line concise usage and good defaults
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # A github action that implements smart caching for rust/cargo projects with sensible defaults.
+      - name: Rust Cache Action
+        uses: Swatinem/rust-cache@v2
+        with: 
+          # An additional cache key that is added alongside the automatic `job`-based key and can be used to further differentiate jobs. Default: Empty
+          key: sqlx-${{ env.SQLX_VERSION }}
+
+      - name: Install sqlx-cli
+        run: 
+          cargo install sqlx-cli
+            --version=${{ env.SQLX_VERSION }}
+            --features ${{ env.SQLX_FEATURES }}
+            --no-default-features
+            --locked
+          # The locked flag can be used to force cargo to use packaed cargo.lock file if it is avaialble
+          # this may be useful for ensuring reproducible builds, to use the exact same set of dependencies that were available when the package was published
+          #it may also be useful if a newer version of a dependency is published that no longer builds on your system, or has other problems
+      - name: Install postgressql-client
+        run: sudo apt-get update && sudo apt-get install postgresql-client -y
+
+      - name: Migrate Database
+        run: SKIP_DOCKER=true ./scripots/init_db.sh
+
+      - name: Run Tests
+        run: cargo tests
+    
+    # `fmt` container job
+    fmt:
+      name: Rustgmt
+      runs-on: ubuntu-latest
+      steps: 
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stabkle
+          with: 
+            # specific to dtolnay/rust-toolchain: Comma separated stirng of additional components to install
+            components: rustfmt
+        - name: Enforce Formatting
+          run: cargo fmt --check
+
+    # Clippy container job
+    clippy:
+      name: Clippy
+      runs-on: ubuntu-latest
+      services:
+        postgres:
+          image: postgres:16
+          env:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: postgres
+          ports:
+            - 5432:5432
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+          with: 
+            components: clippy
+        - uses: Swatinem/rust-cache@v2
+          with:
+            key: sqlx-${{ env.SQLX_VERSION }}
+        - name: Install sqlx-cli
+          run: 
+            cargo install sqlx-cli
+              --version=${{ env.SQLX_VERSION }}
+              --features ${{ env.SQLX_FEATURES }}
+              --no-default-features
+              --locked
+        
+        - name: Install postgresql-client
+          run: sudo apt-get && sudo apt-get install postgresql-client -y
+        - name: Migrate database
+          run: SKIP_FOCKER=true ./scripts/init_db.sh
+        - name: Linting
+          run: cargo clippy -- -D warning
+      
+    # `Coverage` ciontainer job
+    coverage: 
+      name: Code coverage
+      runs-on: ubuntu-latest
+      services:
+        postgres:
+          image: postgres:16
+          env:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: postgres
+          ports:
+            - 5432:5432
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+        - name: Install postgresql-client
+          run: sudo apt-get update && sudo apt-get install postgresql-client -y
+        - uses: Swatinem/rust-cache@v2
+          with:
+            key: sqlx-${{ env.SQLX_VERSION }}
+        - name: Install sqlx-cli
+          run:
+            cargo install sqlx-cli
+            --version=${{ env.SQLX_VERSION }}
+            --features ${{ env.SQLX_FEATURES }}
+            --no-default-features
+            --locked
+        - name: Migrate database
+          run: SKIP_DOCKER=true ./scripts/init_db.sh
+        - name: Generate code coverage
+          run: cargo install cargo-tarpaulin && cargo tarpaulin --verbose --workspace
+    
+    
+        
+       
+        
+          
+            
+        
