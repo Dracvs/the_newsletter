@@ -5,6 +5,7 @@ use the_newsletter::configuration::get_configuration;
 fn spawn_app() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let port = listener.local_addr().unwrap().port();
+
     let server = the_newsletter::startup::run(listener).expect("Failed to bind address");
 
     // let server = the_newsletter::run("127.0.0.1:8000").expect("Failed to bind address");
