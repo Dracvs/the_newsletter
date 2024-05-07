@@ -1,4 +1,4 @@
-use sqlx::{Connection, PgConnection};
+use sqlx::PgPool;
 use std::net::TcpListener;
 use the_newsletter::configuration::get_configuration;
 use the_newsletter::startup::run;
@@ -9,7 +9,7 @@ async fn main() -> Result<(), std::io::Error> {
     let configuration = get_configuration().expect("Failed to read configuration");
     println!("Configuration loaded");
 
-    let connection = PgConnection::connect(&configuration.database.connection_string())
+    let connection_pool = PgPool::connect(&configuration.database.connection_string())
         .await
         .expect("Failes to connect to postgres");
 
@@ -19,5 +19,5 @@ async fn main() -> Result<(), std::io::Error> {
     let listener = TcpListener::bind(&address)?;
     println!("Listening on {}", &address);
 
-    run(listener, connection)?.await
+    run(listener, connection_pool)?.await
 }

@@ -14,10 +14,12 @@ path = "src/main.rs"
 name = "the_newsletter"
 
 [dependencies]
+chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
 actix-web = "4.5.1"
 config = "0.14"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["rt-multi-thread", "macros"] }
+uuid = { version = "1", features = ["v4"] }
 
 
 [dependencies.sqlx]
