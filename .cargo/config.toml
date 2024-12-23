@@ -1,0 +1,8 @@
+# .cargo/config.toml
+# MacOs
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C",
+    "link-arg=-fuse-ld=/opt/homebrew/Cellar/lld/19.1.6/bin/ld64.lld",
+]
